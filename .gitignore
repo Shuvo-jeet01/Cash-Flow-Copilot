@@ -1,0 +1,33 @@
+# dependencies
+/node_modules
+/.pnpm-store
+/.pnp
+.pnp.*
+
+# Next.js
+/.next
+/out
+
+# tests and coverage
+/coverage
+/playwright-report
+/test-results
+/blob-report
+
+# local environment files (keep the example)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# logs and local tooling
+*.log
+.DS_Store
+Thumbs.db
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+
+# Supabase local state
+/supabase/.branches
+/supabase/.temp
