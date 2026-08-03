@@ -2,6 +2,8 @@
 
 Cash-Flow Copilot is explainable cash-flow decision-support software for student organizations. Phase 4 adds Supabase authentication and organization-isolated workspaces while keeping every financial screen as a non-functional placeholder.
 
+The product is designed to help answer: based on our current balance, expected dues, committed sponsorships, and planned expenses, can our organization afford this event under the stated assumptions?
+
 ## Local setup
 
 Requirements: a current Node.js LTS release and pnpm 11.
