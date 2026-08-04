@@ -1,0 +1,2 @@
+transaction_date,direction,amount,currency,description,account_name,category_name,reference,note,external_id
+2026-01-15,expense,25.00,USD,Synthetic example purchase,Checking,Events,EXAMPLE-1,Synthetic example only,DEMO-1

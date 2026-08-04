@@ -10,11 +10,14 @@ import {
   HandCoins,
   Landmark,
   LayoutDashboard,
+  ListChecks,
   LogOut,
   Menu,
   ReceiptText,
   Settings,
   ShieldCheck,
+  Tags,
+  WalletCards,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -28,11 +31,30 @@ import { cn } from "@/lib/utils";
 
 const navigation = [
   { segment: "dashboard", label: "Overview", icon: LayoutDashboard },
+  {
+    segment: "transactions",
+    label: "Transactions",
+    icon: ListChecks,
+    financial: true,
+  },
+  {
+    segment: "accounts",
+    label: "Accounts",
+    icon: WalletCards,
+    financial: true,
+  },
+  { segment: "categories", label: "Categories", icon: Tags, financial: true },
   { segment: "cash-flow", label: "Cash flow", icon: BarChart3 },
   { segment: "commitments", label: "Commitments", icon: CalendarRange },
   { segment: "reimbursements", label: "Reimbursements", icon: ReceiptText },
   { segment: "scenarios", label: "Event scenarios", icon: HandCoins },
-  { segment: "imports", label: "Imports", icon: FileUp },
+  {
+    segment: "imports",
+    label: "Imports",
+    icon: FileUp,
+    financial: true,
+    treasurerOnly: true,
+  },
 ];
 
 function Sidebar({
@@ -58,26 +80,32 @@ function Sidebar({
         </div>
       </div>
       <nav aria-label="Main navigation" className="flex-1 space-y-1 p-4">
-        {navigation.map(({ segment, label, icon: Icon }) => {
-          const href = `${base}/${segment}`;
-          const active = pathname === href;
-          return (
-            <Link
-              key={href}
-              href={href}
-              onClick={onNavigate}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition",
-                active
-                  ? "bg-white/10 text-white"
-                  : "text-slate-400 hover:bg-white/5 hover:text-white",
-              )}
-            >
-              <Icon className="size-4" />
-              {label}
-            </Link>
-          );
-        })}
+        {navigation
+          .filter(
+            (item) =>
+              (!item.financial || organization.role !== "member") &&
+              (!item.treasurerOnly || organization.role === "treasurer"),
+          )
+          .map(({ segment, label, icon: Icon }) => {
+            const href = `${base}/${segment}`;
+            const active = pathname === href;
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={onNavigate}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition",
+                  active
+                    ? "bg-white/10 text-white"
+                    : "text-slate-400 hover:bg-white/5 hover:text-white",
+                )}
+              >
+                <Icon className="size-4" />
+                {label}
+              </Link>
+            );
+          })}
       </nav>
       <div className="border-t border-white/10 p-4">
         <Link
