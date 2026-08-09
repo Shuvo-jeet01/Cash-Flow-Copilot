@@ -44,8 +44,14 @@ const navigation = [
     financial: true,
   },
   { segment: "categories", label: "Categories", icon: Tags, financial: true },
+  { segment: "budgets", label: "Budgets", icon: BarChart3, financial: true },
   { segment: "cash-flow", label: "Cash flow", icon: BarChart3 },
-  { segment: "commitments", label: "Commitments", icon: CalendarRange },
+  {
+    segment: "obligations",
+    label: "Obligations",
+    icon: CalendarRange,
+    financial: true,
+  },
   { segment: "reimbursements", label: "Reimbursements", icon: ReceiptText },
   { segment: "scenarios", label: "Event scenarios", icon: HandCoins },
   {
