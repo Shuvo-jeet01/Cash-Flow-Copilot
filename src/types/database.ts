@@ -22,6 +22,10 @@ export type ImportRowStatus =
   | "possible_duplicate"
   | "accepted_distinct"
   | "skipped_duplicate";
+export type OrganizationBudgetStatus = "draft" | "active" | "closed";
+export type BudgetRevisionStatus =
+  "draft" | "effective" | "superseded" | "closed";
+export type ObligationStatus = "expected" | "committed" | "paid" | "voided";
 
 type ReadOnlyTable<Row> = {
   Row: Row;
@@ -72,6 +76,8 @@ export type Database = {
         configured_by: string;
         configured_at: string;
         updated_at: string;
+        minimum_reserve_minor: number;
+        reserve_version: number;
       }>;
       audit_events: ReadOnlyTable<{
         id: string;
@@ -190,6 +196,90 @@ export type Database = {
         duplicate_transaction_ids: string[];
         resolution_reason: string | null;
         created_at: string;
+      }>;
+      organization_budgets: ReadOnlyTable<{
+        id: string;
+        organization_id: string;
+        status: OrganizationBudgetStatus;
+        created_by: string;
+        created_at: string;
+        updated_at: string;
+        closed_by: string | null;
+        closed_at: string | null;
+        close_reason: string | null;
+        idempotency_key: string;
+        version: number;
+      }>;
+      budget_revisions: ReadOnlyTable<{
+        id: string;
+        organization_id: string;
+        budget_id: string;
+        revision_number: number;
+        name: string;
+        start_on: string;
+        end_on: string;
+        currency_code: string;
+        status: BudgetRevisionStatus;
+        change_reason: string;
+        created_by: string;
+        created_at: string;
+        approved_by: string | null;
+        approved_at: string | null;
+        superseded_at: string | null;
+        idempotency_key: string;
+      }>;
+      budget_allocations: ReadOnlyTable<{
+        id: string;
+        organization_id: string;
+        revision_id: string;
+        category_id: string;
+        direction: TransactionDirection;
+        amount_minor: number;
+        created_by: string;
+        created_at: string;
+      }>;
+      financial_obligations: ReadOnlyTable<{
+        id: string;
+        organization_id: string;
+        description: string;
+        amount_minor: number;
+        currency_code: string;
+        due_on: string;
+        category_id: string;
+        category_direction: TransactionDirection;
+        intended_account_id: string | null;
+        reference: string | null;
+        note: string | null;
+        status: ObligationStatus;
+        linked_transaction_id: string | null;
+        created_by: string;
+        created_at: string;
+        updated_at: string;
+        idempotency_key: string;
+        version: number;
+      }>;
+      obligation_status_history: ReadOnlyTable<{
+        id: string;
+        organization_id: string;
+        obligation_id: string;
+        from_status: ObligationStatus | null;
+        to_status: ObligationStatus;
+        reason: string;
+        linked_transaction_id: string | null;
+        changed_by: string;
+        changed_at: string;
+        idempotency_key: string;
+      }>;
+      minimum_reserve_history: ReadOnlyTable<{
+        id: string;
+        organization_id: string;
+        previous_amount_minor: number;
+        new_amount_minor: number;
+        currency_code: string;
+        reason: string;
+        changed_by: string;
+        changed_at: string;
+        idempotency_key: string;
       }>;
     };
     Views: Record<string, never>;
@@ -319,6 +409,125 @@ export type Database = {
         Args: { requested_organization_id: string; requested_batch_id: string };
         Returns: undefined;
       };
+      set_minimum_cash_reserve: {
+        Args: {
+          requested_organization_id: string;
+          requested_amount_minor: number;
+          requested_expected_version: number;
+          requested_reason: string;
+          requested_idempotency_key: string;
+        };
+        Returns: undefined;
+      };
+      create_organization_budget: {
+        Args: {
+          requested_organization_id: string;
+          requested_name: string;
+          requested_start_on: string;
+          requested_end_on: string;
+          requested_currency_code: string;
+          requested_allocations: Json;
+          requested_reason: string;
+          requested_idempotency_key: string;
+        };
+        Returns: string;
+      };
+      update_draft_budget: {
+        Args: {
+          requested_organization_id: string;
+          requested_budget_id: string;
+          requested_expected_version: number;
+          requested_name: string;
+          requested_start_on: string;
+          requested_end_on: string;
+          requested_currency_code: string;
+          requested_allocations: Json;
+          requested_reason: string;
+          requested_idempotency_key: string;
+        };
+        Returns: undefined;
+      };
+      activate_budget: {
+        Args: {
+          requested_organization_id: string;
+          requested_budget_id: string;
+          requested_expected_version: number;
+          requested_reason: string;
+          requested_idempotency_key: string;
+        };
+        Returns: undefined;
+      };
+      revise_active_budget: {
+        Args: {
+          requested_organization_id: string;
+          requested_budget_id: string;
+          requested_expected_version: number;
+          requested_name: string;
+          requested_start_on: string;
+          requested_end_on: string;
+          requested_currency_code: string;
+          requested_allocations: Json;
+          requested_reason: string;
+          requested_idempotency_key: string;
+        };
+        Returns: string;
+      };
+      close_budget: {
+        Args: {
+          requested_organization_id: string;
+          requested_budget_id: string;
+          requested_expected_version: number;
+          requested_reason: string;
+          requested_idempotency_key: string;
+        };
+        Returns: undefined;
+      };
+      create_financial_obligation: {
+        Args: {
+          requested_organization_id: string;
+          requested_description: string;
+          requested_amount_minor: number;
+          requested_currency_code: string;
+          requested_due_on: string;
+          requested_category_id: string;
+          requested_intended_account_id: string | null;
+          requested_reference: string | null;
+          requested_note: string | null;
+          requested_initial_status: ObligationStatus;
+          requested_idempotency_key: string;
+        };
+        Returns: string;
+      };
+      update_financial_obligation: {
+        Args: {
+          requested_organization_id: string;
+          requested_obligation_id: string;
+          requested_expected_version: number;
+          requested_description: string;
+          requested_amount_minor: number;
+          requested_currency_code: string;
+          requested_due_on: string;
+          requested_category_id: string;
+          requested_intended_account_id: string | null;
+          requested_reference: string | null;
+          requested_note: string | null;
+          requested_reason: string;
+          requested_idempotency_key: string;
+        };
+        Returns: undefined;
+      };
+      transition_financial_obligation: {
+        Args: {
+          requested_organization_id: string;
+          requested_obligation_id: string;
+          requested_expected_version: number;
+          requested_to_status: ObligationStatus;
+          requested_transaction_id: string | null;
+          requested_reason: string;
+          requested_idempotency_key: string;
+        };
+        Returns: undefined;
+      };
     };
     Enums: {
       organization_role: OrganizationRole;
@@ -330,6 +539,9 @@ export type Database = {
       transaction_source: TransactionSource;
       import_batch_status: ImportBatchStatus;
       import_row_status: ImportRowStatus;
+      organization_budget_status: OrganizationBudgetStatus;
+      budget_revision_status: BudgetRevisionStatus;
+      obligation_status: ObligationStatus;
     };
     CompositeTypes: Record<string, never>;
   };

@@ -46,6 +46,34 @@ const importStatusFix = readFileSync(
   ),
   "utf8",
 );
+const budgetSchema = readFileSync(
+  resolve(
+    root,
+    "supabase/migrations/202608050001_phase5b_budget_obligation_schema.sql",
+  ),
+  "utf8",
+);
+const budgetSecurity = readFileSync(
+  resolve(
+    root,
+    "supabase/migrations/202608050002_phase5b_security_and_reserve.sql",
+  ),
+  "utf8",
+);
+const budgetWorkflows = readFileSync(
+  resolve(
+    root,
+    "supabase/migrations/202608050003_phase5b_budget_workflows.sql",
+  ),
+  "utf8",
+);
+const obligationWorkflows = readFileSync(
+  resolve(
+    root,
+    "supabase/migrations/202608050004_phase5b_obligation_workflows.sql",
+  ),
+  "utf8",
+);
 
 describe("Phase 4 migration security contract", () => {
   it("creates audit storage before functions reference it", () => {
@@ -186,5 +214,107 @@ describe("Phase 5A financial security contract", () => {
     expect(importStatusFix).toContain(
       "revoke all on function public.create_transaction_import_preview",
     );
+  });
+});
+
+describe("Phase 5B budget and dashboard security contract", () => {
+  it("uses integer cents, organization composite keys, and immutable histories", () => {
+    expect(budgetSchema).toContain("create table public.organization_budgets");
+    expect(budgetSchema).toContain("create table public.budget_revisions");
+    expect(budgetSchema).toContain("create table public.financial_obligations");
+    expect(budgetSchema).toContain(
+      "create table public.minimum_reserve_history",
+    );
+    expect(budgetSchema).toContain("amount_minor bigint");
+    expect(budgetSchema).toContain(
+      "foreign key (organization_id, category_id, category_direction)",
+    );
+    expect(budgetSchema).not.toMatch(/double precision|real\b/i);
+  });
+
+  it("denies direct writes to every Phase 5B record", () => {
+    for (const table of [
+      "organization_budgets",
+      "budget_revisions",
+      "budget_allocations",
+      "financial_obligations",
+      "obligation_status_history",
+      "minimum_reserve_history",
+    ]) {
+      expect(budgetSecurity).toContain(`revoke all on table public.${table}`);
+      expect(budgetSecurity).toContain(`grant select on table public.${table}`);
+      expect(budgetSecurity).not.toMatch(
+        new RegExp(
+          `grant (insert|update|delete) on table public\\.${table}`,
+          "i",
+        ),
+      );
+    }
+  });
+
+  it("hardens all public workflows and keeps private helpers unavailable", () => {
+    for (const migration of [
+      budgetSecurity,
+      budgetWorkflows,
+      obligationWorkflows,
+    ]) {
+      const functions = migration
+        .split(/create(?: or replace)? function /)
+        .slice(1);
+      const definers = functions.filter((definition) =>
+        definition.includes("security definer"),
+      );
+      expect(definers.length).toBeGreaterThan(0);
+      for (const definition of definers)
+        expect(definition).toContain("set search_path = ''");
+    }
+    expect(budgetWorkflows).toContain(
+      "revoke all on function private.replace_draft_budget_allocations",
+    );
+    expect(budgetWorkflows).not.toMatch(
+      /requested_(?:user|actor|created_by|role)/i,
+    );
+    expect(obligationWorkflows).not.toMatch(
+      /requested_(?:user|actor|created_by|role)/i,
+    );
+  });
+
+  it("keeps migration order atomic and valid from an empty database", () => {
+    for (const migration of [
+      budgetSchema,
+      budgetSecurity,
+      budgetWorkflows,
+      obligationWorkflows,
+    ]) {
+      expect(migration.trimStart()).toMatch(/^begin;/i);
+      expect(migration.trimEnd()).toMatch(/commit;$/i);
+      expect(migration).not.toMatch(
+        /pg_catalog\.(?:coalesce|nullif|greatest|least)\s*\(/i,
+      );
+    }
+    expect(budgetSchema).toContain(
+      "create table public.minimum_reserve_history",
+    );
+    expect(budgetSecurity).toContain(
+      "create function public.set_minimum_cash_reserve",
+    );
+  });
+
+  it("enforces versioning, effective-period exclusion, payment matching, and audit writes", () => {
+    expect(budgetSchema).toContain("exclude using gist");
+    expect(budgetSchema).toContain("budget_revisions_current_idx");
+    expect(budgetWorkflows).toContain("requested_expected_version");
+    expect(budgetWorkflows).toContain("status = 'superseded'");
+    expect(obligationWorkflows).toContain(
+      "transaction.amount_minor = obligation_row.amount_minor",
+    );
+    expect(obligationWorkflows).toContain("transaction.direction = 'expense'");
+    expect(obligationWorkflows).toContain("transaction.status = 'posted'");
+    for (const migration of [
+      budgetSecurity,
+      budgetWorkflows,
+      obligationWorkflows,
+    ])
+      expect(migration).toContain("insert into public.audit_events");
   });
 });
