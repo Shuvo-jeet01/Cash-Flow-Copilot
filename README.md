@@ -6,6 +6,9 @@ The product is designed to help officers understand current cash, approved plans
 
 ## Local setup
 
+For hosting, authentication redirects, synthetic data, and production review,
+see [the public demo deployment guide](./docs/public-demo-deployment.md).
+
 Requirements: a current Node.js LTS release and pnpm 11.
 
 ```bash
